@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Will you be my Valentine?</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f7c8d4;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 40px 60px 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      text-align: center;
+      width: min(950px, 94vw);
+    }
+
+    .emoji {
+      font-size: 56px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 8px 0 40px; /* more space above buttons */
+      font-size: 32px;
+    }
+
+    .buttons {
+      position: relative;
+      height: 110px;       /* vertical space for the rectangle path */
+    }
+
+    .yes-wrap {
+      position: absolute;
+      left: calc(50% - 130px);
+      top: 45%;
+      transform: translate(-50%, -50%);
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 30px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    #yesBtn {
+      background: #e84b86;
+      color: #ffffff;
+      transform: scale(1); /* we only change scale in JS */
+    }
+
+    #noBtn {
+      background: #e5e5ee;
+      color: #222222;
+      position: absolute;
+      left: 50%;
+      top: 70%;
+      /* transform is controlled fully by JS (translate only) */
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: 0.75;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <img src="heart-love.gif" alt="cute cat" />
+    <h1 id="question">Nirali, will you be my valentine?</h1>
+
+    <div class="buttons" id="buttonsArea">
+      <div class="yes-wrap">
+        <button id="yesBtn">Yes</button>
+      </div>
+      <button id="noBtn">No</button>
+    </div>
+
+    <div class="hint">“No” seems a bit shy 😈</div>
+  </div>
+
+  <script>
+    // ====== SIMPLE SETTINGS ======
+    // Change this to your girlfriend's name:
+    var girlfriendName = "Rebu";
+    document.getElementById("question").textContent =
+      girlfriendName + ", will you be my valentine?";
+
+    var yesBtn = document.getElementById("yesBtn");
+    var noBtn = document.getElementById("noBtn");
+    var card = document.getElementById("card");
+
+    // Yes button growth settings
+    var maxScale = 2.4;      // how big "Yes" can get
+    var minScale = 1.0;      // normal size
+    var radius = 320;        // distance where growth starts
+
+    // "No" button rectangle path settings
+    var rectWidth = 260;     // width of imaginary rectangle
+    var rectHeight = 100;    // height of imaginary rectangle
+    var t = 0.2;             // parameter [0,1) for position along rectangle
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function distanceToElementCenter(el, mouseX, mouseY) {
+      var rect = el.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var dx = mouseX - cx;
+      var dy = mouseY - cy;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Convert t in [0,1) to x,y on rectangle path
+    function positionOnRectangle(t) {
+      var halfW = rectWidth / 2;
+      var halfH = rectHeight / 2;
+      var x, y;
+      var p = t % 1;
+      if (p < 0.25) {
+        // top side: left -> right
+        var f = p / 0.25;
+        x = -halfW + f * rectWidth;
+        y = -halfH;
+      } else if (p < 0.5) {
+        // right side: top -> bottom
+        var f = (p - 0.25) / 0.25;
+        x = halfW;
+        y = -halfH + f * rectHeight;
+      } else if (p < 0.75) {
+        // bottom side: right -> left
+        var f = (p - 0.5) / 0.25;
+        x = halfW - f * rectWidth;
+        y = halfH;
+      } else {
+        // left side: bottom -> top
+        var f = (p - 0.75) / 0.25;
+        x = -halfW;
+        y = halfH - f * rectHeight;
+      }
+      return { x: x, y: y };
+    }
+
+    function updateNoPosition() {
+      var pos = positionOnRectangle(t);
+      // center of buttons area is 50%,50%; translate from there
+      noBtn.style.transform = "translate(" + pos.x + "px," + pos.y + "px)";
+    }
+
+    // initial position
+    updateNoPosition();
+
+    // Grow Yes & move No along rectangle when mouse comes near
+    card.addEventListener("mousemove", function (e) {
+      // YES scaling
+      var dYes = distanceToElementCenter(yesBtn, e.clientX, e.clientY);
+      var factor = 1 - clamp(dYes / radius, 0, 1); // 0 far, 1 close
+      var scale = minScale + (maxScale - minScale) * factor;
+      yesBtn.style.transform = "scale(" + scale + ")";
+
+      // NO moving on rectangle if mouse is close to it
+      var dNo = distanceToElementCenter(noBtn, e.clientX, e.clientY);
+      if (dNo < 140) {
+        t += 0.02; // speed along rectangle
+        updateNoPosition();
+      }
+    });
+
+    card.addEventListener("mouseleave", function () {
+      yesBtn.style.transform = "scale(1)";
+    });
+
+    // If she somehow clicks "No", block it and move again
+    noBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      t += 0.08;
+      updateNoPosition();
+    });
+
+    // When she clicks "Yes" ❤️
+    yesBtn.addEventListener("click", function () {
+      // Remove buttons
+      document.getElementById("buttonsArea").remove();
+
+      // Remove hint
+      document.querySelector(".hint").remove();
+
+      // Create YAY text
+      var yay = document.createElement("div");
+      yay.textContent = "YAY! 💖";
+      yay.style.textAlign = "center";
+
+      // Add it to the card
+      card.appendChild(yay);
+
+      // Outer centering container
+      var outer = document.createElement("div");
+      outer.style.display = "block";
+      outer.style.width = "100%";
+      outer.style.textAlign = "center";
+
+      // Inner size limiter
+      var inner = document.createElement("div");
+      inner.style.maxWidth = "400px";
+      inner.style.margin = "0 auto";
+
+      inner.innerHTML = `
+        <div class="tenor-gif-embed"
+            data-postid="17210214"
+            data-share-method="host"
+            data-aspect-ratio="1"
+            data-width="100%">
+        </div>
+      `;
+
+      outer.appendChild(inner);
+      card.appendChild(outer);
+
+      // Load Tenor script
+      var script = document.createElement("script");
+      script.src = "https://tenor.com/embed.js";
+      script.async = true;
+      document.body.appendChild(script);
+    });
+  </script>
+</body>
+</html>
